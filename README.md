@@ -48,9 +48,8 @@ Built in:
 - **Private-line gating** — models whose id contains `-private` answer
   only in **bot DMs** or **NSFW-flagged channels**, using Discord's own
   channel flag. Public channels get an ephemeral nudge instead.
-- **Free quota** — `FREE_PER_DAY` (default 3) generations per user per
-  day, counted only on success; in-memory, swap for Redis/SQLite if you
-  need persistence.
+- **No built-in quota** — every generation bills your `LP_KEY`; add
+  your own rate limiting if you need it (env, KV, per-user auth).
 - Public results carry a `via livepairai.com` footer — remove it if you
   want, but leaving it helps the next dev find the template.
 
