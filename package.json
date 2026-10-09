@@ -1,13 +1,16 @@
 {
   "name": "livepair-bots",
   "version": "1.0.0",
-  "description": "Self-hostable LivePair AI bot templates — Discord, Telegram, n8n",
+  "description": "Self-hostable LivePair AI bot templates — Discord, Telegram, X/Twitter, n8n",
   "type": "module",
   "scripts": {
     "discord": "node discord-bot.mjs",
     "telegram": "node telegram-bot.mjs",
-    "discord:register": "node register-commands.mjs"
+    "discord:register": "node register-commands.mjs",
+    "twitter": "node twitter-bot.mjs"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "license": "MIT"
 }
