@@ -22,18 +22,37 @@ https://livepairai.com/settings. Swap `MODEL` for any id in
 `GET https://livepairai.com/v1/agent/models` (image and video models —
 switch `sendPhoto` to `sendVideo` for clips).
 
-## Discord AI image bot
+## Discord AI image & video bot
 
-[`discord-bot.mjs`](./discord-bot.mjs) — `/imagine` slash command via the
-Discord interactions **webhook** — no gateway, no discord.js, signatures
-verified with Node's built-in crypto:
+[`discord-bot.mjs`](./discord-bot.mjs) — `/imagine` + `/video` slash
+commands via the Discord interactions **webhook** — no gateway, no
+discord.js, signatures verified with Node's built-in crypto:
 
 ```bash
 PUBLIC_KEY=<app public key> APP_ID=<app id> LP_KEY=lp_... node discord-bot.mjs
 ```
 
-Register the command once (curl in the file header), point the app's
-Interactions Endpoint at `/interactions`, done.
+1. Create an app at the Discord developer portal → copy `PUBLIC KEY` and
+   `APPLICATION ID`.
+2. Register the commands once:
+   `APP_ID=… BOT_TOKEN=… node register-commands.mjs`
+   (`GUILD_ID=…` registers instantly for testing; global takes ~1h)
+3. Point the app's **Interactions Endpoint URL** at
+   `https://<your-host>/interactions`.
+
+Built in:
+
+- **Model picker** — optional `model` option against the live catalog
+  (`/v1/agent/models`, cached 5min); defaults `qwen-image-3` /
+  `wan-3.0-t2v`, override via `IMAGE_MODEL`/`VIDEO_MODEL`.
+- **Private-line gating** — models whose id contains `-private` answer
+  only in **bot DMs** or **NSFW-flagged channels**, using Discord's own
+  channel flag. Public channels get an ephemeral nudge instead.
+- **Free quota** — `FREE_PER_DAY` (default 3) generations per user per
+  day, counted only on success; in-memory, swap for Redis/SQLite if you
+  need persistence.
+- Public results carry a `via livepairai.com` footer — remove it if you
+  want, but leaving it helps the next dev find the template.
 
 ## n8n workflow — Telegram → generate → reply
 
