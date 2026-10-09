@@ -1,0 +1,128 @@
+{
+  "name": "LivePair Telegram Image Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [0, 300],
+      "credentials": {
+        "telegramApi": { "id": "", "name": "Telegram Bot" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://livepairai.com/v1/agent/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "lp_YOUR_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"model\": \"qwen-image-3\", \"prompt\": \"{{ $json.message.text }}\" }",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Start Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": { "amount": 10, "unit": "seconds" },
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://livepairai.com/v1/agent/jobs/{{ $json.jobId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "lp_YOUR_KEY" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Poll Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-done",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "done",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "binaryData": false,
+        "operation": "sendPhoto",
+        "file": "={{ $json.url }}",
+        "additionalFields": {
+          "caption": "={{ $('Telegram Trigger').item.json.message.text }}"
+        }
+      },
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Send Photo",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1100, 200],
+      "credentials": {
+        "telegramApi": { "id": "", "name": "Telegram Bot" }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [[{ "node": "Start Generation", "type": "main", "index": 0 }]]
+    },
+    "Start Generation": {
+      "main": [[{ "node": "Wait", "type": "main", "index": 0 }]]
+    },
+    "Wait": {
+      "main": [[{ "node": "Poll Job", "type": "main", "index": 0 }]]
+    },
+    "Poll Job": {
+      "main": [[{ "node": "Done?", "type": "main", "index": 0 }]]
+    },
+    "Done?": {
+      "main": [
+        [{ "node": "Send Photo", "type": "main", "index": 0 }],
+        [{ "node": "Wait", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
