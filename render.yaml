@@ -1,0 +1,17 @@
+# One-click Render deploy — https://render.com/deploy?repo=https://github.com/livepairai/livepair-bots
+services:
+  - type: web
+    name: livepair-discord-bot
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: "node discord-bot.mjs"
+    envVars:
+      - key: PUBLIC_KEY
+        sync: false
+      - key: APP_ID
+        sync: false
+      - key: LP_KEY
+        sync: false
+      - key: PORT
+        value: "8787"

@@ -1,0 +1,65 @@
+{
+  "name": "LivePair → X (Twitter) media post",
+  "comment": "Prompt in (webhook or schedule) → LivePair Generate Media → post the result to X. Import via Workflows → Import from File. Requires the @livepairai/n8n-nodes-livepair community node and X OAuth2 credentials.",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "livepair-x",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "hook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "operation": "generate",
+        "modelId": "",
+        "prompt": "={{ $json.body.prompt }}",
+        "options": {}
+      },
+      "id": "gen",
+      "name": "LivePair Generate",
+      "type": "@livepairai/n8n-nodes-livepair.livePair",
+      "typeVersion": 1,
+      "position": [220, 0],
+      "credentials": {
+        "livePairApi": { "id": "", "name": "LivePair API" }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.body.caption || 'Generated with LivePair AI' }}\n\nvia livepairai.com",
+        "additionalFields": {}
+      },
+      "id": "tweet",
+      "name": "Post to X",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [440, 0],
+      "credentials": {
+        "twitterOAuth2Api": { "id": "", "name": "X account" }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { url: $('LivePair Generate').item.json.url, tweet: $('Post to X').item.json } }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [660, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "LivePair Generate", "type": "main", "index": 0 }]] },
+    "LivePair Generate": { "main": [[{ "node": "Post to X", "type": "main", "index": 0 }]] },
+    "Post to X": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  }
+}

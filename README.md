@@ -53,12 +53,26 @@ Built in:
 - Public results carry a `via livepairai.com` footer — remove it if you
   want, but leaving it helps the next dev find the template.
 
-## n8n workflow — Telegram → generate → reply
+## One-click deploy
 
-[`n8n-telegram-workflow.json`](./n8n-telegram-workflow.json) — import via
-**Workflows → Import from File**: Telegram trigger → `generate` →
-wait/poll loop → `sendPhoto`. Fill in `lp_YOUR_KEY` and your Telegram
-credentials. Same node pattern ports to Make/Zapier HTTP steps.
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/livepairai/livepair-bots)
+
+`render.yaml` ships a free-plan web service for the Discord bot — fill
+`PUBLIC_KEY`, `APP_ID`, `LP_KEY` in the Render dashboard, then point the
+app's Interactions Endpoint URL at the deployed `/interactions` path.
+
+## n8n workflows — generate → reply / post
+
+- [`n8n-telegram-workflow.json`](./n8n-telegram-workflow.json) — Telegram
+  trigger → `generate` → wait/poll loop → `sendPhoto`.
+- [`n8n-x-workflow.json`](./n8n-x-workflow.json) — webhook →
+  **LivePair Generate Media** (community node) → **Post to X** — auto-post
+  generated media to X/Twitter. Needs the
+  [`@livepairai/n8n-nodes-livepair`](https://www.npmjs.com/package/@livepairai/n8n-nodes-livepair)
+  community node + X OAuth2 credentials.
+
+Import via **Workflows → Import from File**. Same node pattern ports to
+Make/Zapier HTTP steps.
 
 ## Agent frameworks (Hermes / OpenClaw / anything OpenAI-compatible)
 
