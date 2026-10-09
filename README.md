@@ -1,8 +1,8 @@
-# LivePair Bots — Telegram & Discord AI image/video bot templates
+# LivePair Bots — Telegram, Discord & X/Twitter AI media bot templates
 
 Ready-to-run bot templates that put the [LivePair AI](https://livepairai.com)
-private image & video generation API inside Telegram, Discord, and n8n
-automation. **Pay per result** from prepaid credits — no subscription, no
+private image & video generation API inside Telegram, Discord, X/Twitter,
+and n8n automation. **Pay per result** from prepaid credits — no subscription, no
 monthly tier. Renders auto-delete after 48h; nothing enters a public feed.
 
 Every template is zero-dependency (Node 20+ built-ins only) — clone, set
@@ -53,13 +53,43 @@ Built in:
 - Public results carry a `via livepairai.com` footer — remove it if you
   want, but leaving it helps the next dev find the template.
 
-## One-click deploy
+## X/Twitter — generate + post
+
+[`twitter-bot.mjs`](./twitter-bot.mjs) — generates an image or clip with
+LivePair, uploads it to X, posts the tweet. One-shot CLI — run it from a
+cron, CI job, or wire it to any trigger:
+
+```bash
+node twitter-bot.mjs "a cat astronaut, cinematic" --text "daily drop"
+node twitter-bot.mjs "slow wave crash" --video
+```
+
+X keys come from **your own app** at developer.x.com (Read and write
+permission) → set `X_API_KEY` / `X_API_SECRET` / `X_ACCESS_TOKEN` /
+`X_ACCESS_SECRET`. The free tier can post tweets + upload media; it just
+can't *read* timelines — fine for a poster bot. OAuth1.0a signing is
+implemented inline with Node's built-in crypto, so still zero deps.
+
+Prefer a GUI? The [n8n workflow](#n8n-workflows--generate--reply--post)
+below does the same thing with a visual editor.
+
+## Deploy anywhere
+
+**Render (one click):**
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/livepairai/livepair-bots)
 
 `render.yaml` ships a free-plan web service for the Discord bot — fill
 `PUBLIC_KEY`, `APP_ID`, `LP_KEY` in the Render dashboard, then point the
 app's Interactions Endpoint URL at the deployed `/interactions` path.
+
+**Anywhere else** — the included `Dockerfile` runs the Discord bot on
+Railway, Fly.io, ECS, or any VPS:
+
+```bash
+docker build -t livepair-bots . && docker run -p 8787:8787 --env-file .env livepair-bots
+# Railway: railway up   ·   Fly: fly deploy   ·   plain VPS: node discord-bot.mjs
+```
 
 ## n8n workflows — generate → reply / post
 
