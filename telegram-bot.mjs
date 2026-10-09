@@ -9,6 +9,7 @@ const KEY = process.env.LP_KEY;      // https://livepairai.com/settings
 const TG = `https://api.telegram.org/bot${BOT}`;
 const LP = "https://livepairai.com";
 const MODEL = "qwen-image-3"; // any id from GET /v1/agent/models
+const VIDEO = false;          // true → sendVideo for video models (wan-*, seedance-*)
 
 const tg = (method, body) =>
   fetch(`${TG}/${method}`, {
@@ -25,9 +26,11 @@ const lp = (path, body) =>
   }).then((r) => r.json());
 
 async function generate(prompt) {
-  // submit → poll the job until the media URL lands
-  const { jobId } = await lp("/v1/agent/generate", { model: MODEL, prompt });
-  if (!jobId) throw new Error("generate rejected — check credits/key");
+  // submit → result can come back inline or as a jobId to poll
+  const res = await lp("/v1/agent/generate", { model: MODEL, prompt });
+  if (res.status === "done" && res.url) return res.url;
+  const jobId = res.jobId ?? (res.poll ?? "").split("/").pop();
+  if (!jobId) throw new Error(`generate rejected — ${res.error ?? "check credits/key"}`);
   for (let i = 0; i < 120; i++) {
     await new Promise((r) => setTimeout(r, 2000));
     const j = await fetch(`${LP}/v1/agent/jobs/${jobId}`).then((r) => r.json());
@@ -50,10 +53,14 @@ for (;;) {
         await tg("sendMessage", { chat_id: msg.chat.id, text: "Send me a prompt — I'll generate it on LivePair." });
       continue;
     }
-    await tg("sendChatAction", { chat_id: msg.chat.id, action: "upload_photo" }).catch(() => {});
+    await tg("sendChatAction", { chat_id: msg.chat.id, action: VIDEO ? "upload_video" : "upload_photo" }).catch(() => {});
     try {
       const url = await generate(text);
-      await tg("sendPhoto", { chat_id: msg.chat.id, photo: url, caption: text.slice(0, 900) });
+      await tg(VIDEO ? "sendVideo" : "sendPhoto", {
+        chat_id: msg.chat.id,
+        [VIDEO ? "video" : "photo"]: url,
+        caption: text.slice(0, 900),
+      });
     } catch (e) {
       await tg("sendMessage", { chat_id: msg.chat.id, text: `failed: ${e.message}` });
     }

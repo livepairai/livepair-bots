@@ -12,7 +12,7 @@
 //          "options":[{"name":"prompt","description":"what to draw","type":3,"required":true}]}'
 // then set the app's Interactions Endpoint URL to https://<your-host>:8787/interactions
 import { createServer } from "node:http";
-import { verify } from "node:crypto";
+import { createPublicKey, verify } from "node:crypto";
 
 const PUBLIC_KEY = process.env.PUBLIC_KEY;
 const APP_ID = process.env.APP_ID;
@@ -37,13 +37,18 @@ async function generate(prompt) {
   throw new Error("timed out");
 }
 
+// Discord's public key is raw hex — wrap it in the ed25519 SPKI DER header
+// before asking crypto to verify, or the key parse itself throws.
+const PUB = createPublicKey({
+  key: Buffer.concat([
+    Buffer.from("302a300506032b6570032100", "hex"),
+    Buffer.from(PUBLIC_KEY, "hex"),
+  ]),
+  format: "der",
+  type: "spki",
+});
 const okSig = (sig, ts, body) =>
-  verify(
-    "ed25519",
-    Buffer.concat([Buffer.from(ts), body]),
-    `-----BEGIN PUBLIC KEY-----\n${PUBLIC_KEY}\n-----END PUBLIC KEY-----`,
-    Buffer.from(sig, "hex"),
-  );
+  verify("ed25519", Buffer.concat([Buffer.from(ts), body]), PUB, Buffer.from(sig, "hex"));
 
 createServer((req, res) => {
   if (req.method !== "POST" || req.url !== "/interactions") {
@@ -77,7 +82,7 @@ createServer((req, res) => {
         await fetch(followup, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: url }),
+          body: JSON.stringify({ embeds: [{ image: { url }, footer: { text: prompt.slice(0, 200) } }] }),
         });
       } catch (e) {
         await fetch(followup, {
