@@ -15,8 +15,9 @@
 // Private-line models (id contains "-private") only run in NSFW-flagged
 // guild channels or bot DMs — Discord's own channel flag does the gating.
 //
-// Free quota: FREE_PER_DAY generations per user per UTC day (in-memory —
-// restart resets; swap in Redis/SQLite if you need persistence).
+// Every successful generation bills YOUR LP_KEY — there is no built-in
+// free tier. Rate-limit however you like (env, KV, your own auth) —
+// the example deliberately ships none.
 //
 //   curl -X PUT "https://discord.com/api/v10/applications/$APP_ID/commands" \
 //     -H "Authorization: Bot $BOT_TOKEN" -H "content-type: application/json" \
@@ -34,15 +35,8 @@ const PUBLIC_KEY = process.env.PUBLIC_KEY;
 const APP_ID = process.env.APP_ID;
 const KEY = process.env.LP_KEY;
 const LP = process.env.LIVEPAIR_BASE ?? "https://livepairai.com";
-const FREE_PER_DAY = Number(process.env.FREE_PER_DAY ?? 3);
 const DEFAULT_IMAGE_MODEL = process.env.IMAGE_MODEL ?? "qwen-image-3";
 const DEFAULT_VIDEO_MODEL = process.env.VIDEO_MODEL ?? "wan-3.0-t2v";
-
-const usage = new Map(); // `${userId}:${date}` -> count
-const quotaLeft = (userId) => {
-  const k = `${userId}:${new Date().toISOString().slice(0, 10)}`;
-  return [k, FREE_PER_DAY - (usage.get(k) ?? 0)];
-};
 
 const isPrivateModel = (id) => id.includes("-private");
 
@@ -100,9 +94,6 @@ async function finishJob(ix, prompt, model) {
     });
   try {
     const url = await generate(prompt, model.id);
-    const userId = ix.member?.user?.id ?? ix.user?.id ?? "anon";
-    const [k] = quotaLeft(userId);
-    usage.set(k, (usage.get(k) ?? 0) + 1); // count only on success
     const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url) || model.kind === "video";
     await patch(
       isVideo
@@ -171,14 +162,6 @@ createServer((req, res) => {
       return send(
         reply(
           "Private-line models run in **bot DMs** or **NSFW-flagged channels** only — private means actually private. Open a DM with me and run the same command.",
-        ),
-      );
-
-    const userId = ix.member?.user?.id ?? ix.user?.id ?? "anon";
-    if (quotaLeft(userId)[1] <= 0)
-      return send(
-        reply(
-          `Daily free quota used (${FREE_PER_DAY}/day) — unlimited runs at <https://livepairai.com> (lp_ key or pay-per-call x402).`,
         ),
       );
 
