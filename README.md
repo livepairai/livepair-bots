@@ -165,6 +165,15 @@ key, or x402 (agents pay per call in USDC on Base — see
 repo). Agent-facing config snippets for Hermes/OpenClaw and any
 OpenAI-compatible framework live in [`hermes-openclaw.md`](./hermes-openclaw.md).
 
+### OpenAI-compatible surfaces
+
+Already inside an OpenAI-shaped client? Point it at
+`https://livepairai.com/v1/agent` — `/chat/completions`,
+`/images/generations`, and `/videos` (+ `GET /videos/{id}`,
+`/videos/{id}/content`) all speak the stock spec shapes, and
+`GET /models` returns the OpenAI `object:"list"` shape so model pickers
+populate. Same `lp_` key, same credits billing.
+
 ## Error handling
 
 The shared client throws `LivePairError` with an HTTP `status`:
