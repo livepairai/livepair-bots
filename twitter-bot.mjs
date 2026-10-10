@@ -7,8 +7,7 @@
 // Get X keys: developer.x.com → create app → "Read and write" permissions →
 // Keys and Tokens. Free tier can post + upload media (no read endpoints).
 import { createHmac, randomBytes } from "node:crypto";
-
-const LP = "https://livepairai.com";
+import { generate } from "./lib/livepair.mjs";
 const { LP_KEY, X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET } = process.env;
 for (const [k, v] of Object.entries({ LP_KEY, X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET }))
   if (!v) { console.error(`missing env ${k}`); process.exit(1); }
@@ -46,19 +45,7 @@ const xpost = async (url, body, headers = {}) => {
 
 // --- LivePair generate ---
 console.log(`generating ${video ? "video" : "image"} (${model})…`);
-const gen = await fetch(`${LP}/v1/agent/generate`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json", "x-api-key": LP_KEY },
-  body: JSON.stringify({ model, prompt }),
-}).then((r) => r.json());
-if (!gen.jobId && !gen.url) throw new Error(gen.error ?? "generate rejected — check LP_KEY/credits");
-let mediaUrl = gen.url;
-while (!mediaUrl) {
-  await new Promise((r) => setTimeout(r, 2000));
-  const j = await fetch(`${LP}/v1/agent/jobs/${gen.jobId}`).then((r) => r.json());
-  if (j.status === "done") mediaUrl = j.url;
-  if (j.status === "failed") throw new Error(j.error ?? "generation failed");
-}
+const mediaUrl = await generate(LP_KEY, { model, prompt });
 
 // --- X media upload (v1.1) + tweet (v2) ---
 const media = await fetch(mediaUrl).then((r) => r.arrayBuffer());

@@ -30,11 +30,11 @@
 // then set the app's Interactions Endpoint URL to https://<host>:8787/interactions
 import { createServer } from "node:http";
 import { createPublicKey, verify } from "node:crypto";
+import { generate, listModels } from "./lib/livepair.mjs";
 
 const PUBLIC_KEY = process.env.PUBLIC_KEY;
 const APP_ID = process.env.APP_ID;
 const KEY = process.env.LP_KEY;
-const LP = process.env.LIVEPAIR_BASE ?? "https://livepairai.com";
 const DEFAULT_IMAGE_MODEL = process.env.IMAGE_MODEL ?? "qwen-image-3";
 const DEFAULT_VIDEO_MODEL = process.env.VIDEO_MODEL ?? "wan-3.0-t2v";
 
@@ -43,27 +43,9 @@ const isPrivateModel = (id) => id.includes("-private");
 let modelCache;
 async function models() {
   if (modelCache && Date.now() - modelCache.at < 300_000) return modelCache.list;
-  const j = await fetch(`${LP}/v1/agent/models`).then((r) => r.json());
-  const list = Array.isArray(j) ? j : j.models ?? [];
+  const list = await listModels();
   modelCache = { at: Date.now(), list };
   return list;
-}
-
-async function generate(prompt, modelId) {
-  const res = await fetch(`${LP}/v1/agent/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": KEY },
-    body: JSON.stringify({ model: modelId, prompt }),
-  }).then((r) => r.json());
-  if (!res.jobId && !res.url) throw new Error(res.error ?? "generate rejected — check credits/key");
-  if (res.url) return res.url;
-  for (let i = 0; i < 150; i++) {
-    await new Promise((r) => setTimeout(r, 2000));
-    const j = await fetch(`${LP}/v1/agent/jobs/${res.jobId}`).then((r) => r.json());
-    if (j.status === "done") return j.url;
-    if (j.status === "failed") throw new Error(j.error ?? "generation failed");
-  }
-  throw new Error("timed out");
 }
 
 // Discord's public key is raw hex — wrap it in the ed25519 SPKI DER header
@@ -93,7 +75,7 @@ async function finishJob(ix, prompt, model) {
       body: JSON.stringify(body),
     });
   try {
-    const url = await generate(prompt, model.id);
+    const url = await generate(KEY, { model: model.id, prompt });
     const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url) || model.kind === "video";
     await patch(
       isVideo

@@ -4,12 +4,13 @@
 //
 // Billing rides the owner's prepaid credits — per result, a few cents.
 // Swap x-api-key for the x402 rail (USDC wallet) if you want keyless.
+import { generate } from "./lib/livepair.mjs";
+
 const BOT = process.env.BOT_TOKEN;   // @BotFather
 const KEY = process.env.LP_KEY;      // https://livepairai.com/settings
 const TG = `https://api.telegram.org/bot${BOT}`;
-const LP = "https://livepairai.com";
-const MODEL = "qwen-image-3"; // any id from GET /v1/agent/models
-const VIDEO = false;          // true → sendVideo for video models (wan-*, seedance-*)
+const MODEL = process.env.IMAGE_MODEL ?? "qwen-image-3"; // any id from GET /v1/agent/models
+const VIDEO = process.env.VIDEO === "1";                  // sendVideo for video models
 
 const tg = (method, body) =>
   fetch(`${TG}/${method}`, {
@@ -17,28 +18,6 @@ const tg = (method, body) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   }).then((r) => r.json());
-
-const lp = (path, body) =>
-  fetch(`${LP}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": KEY },
-    body: JSON.stringify(body),
-  }).then((r) => r.json());
-
-async function generate(prompt) {
-  // submit → result can come back inline or as a jobId to poll
-  const res = await lp("/v1/agent/generate", { model: MODEL, prompt });
-  if (res.status === "done" && res.url) return res.url;
-  const jobId = res.jobId ?? (res.poll ?? "").split("/").pop();
-  if (!jobId) throw new Error(`generate rejected — ${res.error ?? "check credits/key"}`);
-  for (let i = 0; i < 120; i++) {
-    await new Promise((r) => setTimeout(r, 2000));
-    const j = await fetch(`${LP}/v1/agent/jobs/${jobId}`).then((r) => r.json());
-    if (j.status === "done") return j.url;
-    if (j.status === "failed") throw new Error(j.error ?? "generation failed");
-  }
-  throw new Error("timed out");
-}
 
 let offset = 0;
 console.log("polling…");
@@ -55,7 +34,7 @@ for (;;) {
     }
     await tg("sendChatAction", { chat_id: msg.chat.id, action: VIDEO ? "upload_video" : "upload_photo" }).catch(() => {});
     try {
-      const url = await generate(text);
+      const url = await generate(KEY, { model: MODEL, prompt: text });
       await tg(VIDEO ? "sendVideo" : "sendPhoto", {
         chat_id: msg.chat.id,
         [VIDEO ? "video" : "photo"]: url,
